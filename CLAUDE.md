@@ -199,37 +199,74 @@ Gestion accès niveaux par le superviseur.
 
 ## CalcNPlay (dossier calcnplay/)
 
-**game_id : `3` — slug : `'calcnplay'`** — jeu de calcul mental, en cours de création.
+**game_id : `3` — slug : `'calcnplay'`** — jeu de calcul mental, complet et fonctionnel.
 
 ### game-config.js
 ```js
 GAME_CONFIG.game_id = 'calcnplay'
 GAME_CONFIG.name    = 'CalcNPlay'
-GAME_CONFIG.modes   = [ { slug:'calcul', id:0, icon:'🧮', label:'Calcul mental', chrono_s:10,
+GAME_CONFIG.modes   = [ { slug:'calcul', id:0, icon:'🧮', label:'Calcul mental',
+                          speed_levels:[ {level:0,label:'Sans chrono',seconds:0},
+                                         {level:1..5, ..., seconds:13→1.5} ],
                           audio_required:false, score_tracking:true } ]
-GAME_CONFIG.ui      = { level_display:'list', audio:false, chrono:true, difficulty:true,
+GAME_CONFIG.ui      = { level_display:'thumbnail', audio:false, difficulty:false,
                         access_control:false, item_label:'question' }
-GAME_CONFIG.difficulties = [ CP(1), CE1(2), CE2(3), CM1(4), CM2(5) ]
+GAME_CONFIG.score3_per_question = 500   // seuil pts/question pour la 3e étoile
+GAME_CONFIG.help_sections = [ ... ]
 // Backward compat game.js :
 GAME_CONFIG.game_types = { calcul:0 }
-GAME_CONFIG.chrono_s   = { calcul:10 }
 ```
+Différences notables avec CliConVocabulary : le chrono est géré **par mode** via un
+tableau `speed_levels` (pas de `chrono_s` global ni de champ `ui.chrono`) ; pas de
+`GAME_CONFIG.difficulties` global — la difficulté est un tableau `difficulties[]` porté par
+chaque niveau (Firestore), et `ui.difficulty` vaut `false` (pas de barre de difficulté sur
+l'accueil).
 
 ### firebase-service.js
 `window.gameService = { ..._platformMethods, GAME_ID:3, getItemCount(levelDocId) }`
-`getItemCount` retourne le nombre de questions (mode list) ou `null` (mode computed).
+`getItemCount` retourne le nombre de questions (mode `list`) ou `null` (mode `computed`,
+compte dynamique).
 
-### editor-firebase-service.js + formats.json + editor.html + editor.js + editor.css
-Éditeur de niveaux complet — voir section précédente pour les détails.
+### editor-firebase-service.js
+`window.editorService = { ..._platformMethods, ..._editorPlatformMethods, GAME_ID:3, GAME_NAME:'CalcNPlay' }`
+- `createFamily(name)` — id auto-incrémenté, `uuid: cnp-fam-{id}-{ts}`
+- `createLevel(familyId, familyUuid, name, difficulties=[], notes='', source='standard', ownerUid=null, isPrivate=true)` —
+  signature étendue par rapport au contrat générique de `editor_manager` (`difficulties`
+  est un **tableau**, plus `source`/`owner_uid`/`private` pour le système niveaux
+  standard/perso/tiers). Niveau créé avec `valid:false`, `rules:null`.
+- `deleteFamily` (+ niveaux liés en cascade), `deleteLevel`
+- Auth aliases : `getProvider()`, `reauthPassword(pw)`, `reauthGoogle()`
+
+### formats.json
+Templates de questions pour le mode `computed` : `default` (résultat inconnu),
+`find_op1_q`/`find_op2_q` (terme inconnu, écriture `= ?`), `find_op1_dots`/`find_op2_dots`
+(même chose, style `...`). Chaque entrée : `{id, label, template, placeholder_display, answer_key}`.
+
+### editor.html + editor.js
+Éditeur de niveaux complet. Un niveau (`rules`) a deux modes exclusifs :
+- `mode:'computed'` — génération procédurale : `a`/`b` (`min`, `max`, `coef`),
+  `operators[]`, `result{min,max}`, `format_id` (référence `formats.json`). Aperçu formule
+  live (`_renderFormulaPreview`), génération d'exemples (`generateExamples`), zone de test
+  interactive au clavier (`_nextTestQuestion`/`_validateTestAnswer`).
+- `mode:'list'` — questions saisies à la main (`list.questions[]`).
+
+`_defaultRules()` initialise un niveau vierge en mode `computed`, opérateur `+`, bornes 1–10.
 
 ### index.html
 Thin wrapper identique à CliConVocabulary — tout géré par `shared/index.js`.
-Affiche : label mode unique "🧮 Calcul mental" (sans dropdown), barre de difficulté CP→CM2,
-grille en liste (pas de thumbnail).
 
-### Ce qui reste à créer
-- `game.js` : logique jeu calcul mental (réécrire depuis zéro)
-- `game.html` : à adapter pour CalcNPlay (supprimer image/SVG/marqueurs)
+### game.html + game.js
+Jeu façon "puzzle qui tombe" : les questions apparaissent et descendent dans
+`#question-layer`, au-dessus d'un fond (`#bg-layer`) ; chaque bonne réponse révèle une
+pièce de `#puzzle-layer`. Réponse saisie via numpad (`#numpad`), qui remplit des slots
+(`_buildSlots` / `_typedAnswer` / `_expectedAnswer`).
+Lit params URL : `level`, `mode` (`calcul`), `speed`, `seconds`, `avatar`, `player`, `profile`.
+`MAX_LIVES = 3`. Étoiles (`_computeStars`) : ★ = partie terminée, ★★ = sans perdre de vie,
+★★★ = sans perdre de vie + chrono actif (`SPEED > 0`).
+Sauvegarde via `gameService.saveScore` + `updateProgress` (`game_type_id` résolu depuis
+`GAME_CONFIG.game_types[MODE]`).
+**`VERSION`** (actuellement `v0.2.3`) à incrémenter à chaque push — même convention que
+CliConVocabulary.
 
 ---
 
