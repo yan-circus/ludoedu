@@ -2,7 +2,7 @@
 
 const GAME_CONFIG = {
   game_id: 'cliconvocabulary',
-  name:    'CliConVocabulary',
+  name:    'CliConVocabulary — ' + VOCAB_LANG.label,
 
   // Mode metadata — used by shared/index.js
   modes: [

@@ -2,7 +2,7 @@
 // Requires: shared/firebase-core.js, shared/platform-methods.js, shared/editor-platform-methods.js
 // Requires: Firebase Storage compat SDK (loaded in editor.html before this file)
 
-const GAME_ID = 2;
+const GAME_ID = VOCAB_LANG.game_id;
 // Storage initialisé à la demande (pas chargé dans editor_manager.html)
 const _storage = () => firebase.storage();
 

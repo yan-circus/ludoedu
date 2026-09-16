@@ -45,6 +45,7 @@ let _editorServicePromise = null;
 function ensureEditorService(game) {
   if (!_editorServicePromise) {
     _editorServicePromise = loadScript('editor-platform-methods.js')
+      .then(() => loadScript('../' + game + '/langs.js').catch(() => {}))
       .then(() => loadScript('../' + game + '/editor-firebase-service.js'));
   }
   return _editorServicePromise;

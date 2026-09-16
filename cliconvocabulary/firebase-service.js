@@ -1,7 +1,7 @@
 // firebase-service.js — CliConVocabulary game service (game-specific additions)
 // Requires: shared/firebase-core.js, shared/platform-methods.js
 
-const GAME_ID = 2;
+const GAME_ID = VOCAB_LANG.game_id;
 
 window.gameService = {
   ..._platformMethods,

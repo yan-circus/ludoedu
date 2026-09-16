@@ -127,6 +127,7 @@
     await loadScript('firebase-core.js');
     await loadScript('platform-methods.js');
     await loadScript('editor-platform-methods.js');
+    try { await loadScript('../' + _game + '/langs.js'); } catch (_) { /* pas de variantes de langue pour ce jeu */ }
     await loadScript('../' + _game + '/editor-firebase-service.js');
     await loadScript('editor_manager.js');
   } catch (e) {
