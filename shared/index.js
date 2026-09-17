@@ -2,7 +2,7 @@
 // Requires: game-config.js (GAME_CONFIG), firebase-core.js,
 //           platform-methods.js, firebase-service.js (GAME_ID, gameService)
 
-const VERSION = 'v1.4.4';
+const VERSION = 'v1.4.5';
 console.log(`%c${GAME_CONFIG.name} [index] ${VERSION}`, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _pfx  = GAME_CONFIG.game_id + '-';
@@ -330,7 +330,9 @@ async function renderProfilesDropdown() {
   dashRow.innerHTML = `<span class="dropdown-action-label">🛠 Tableau de bord</span>`;
   dashRow.addEventListener('click', () => {
     document.getElementById('user-dropdown').classList.add('hidden');
-    location.href = '../shared/dashboard.html?game=' + GAME_CONFIG.game_id;
+    const lang = new URLSearchParams(location.search).get('lang');
+    location.href = '../shared/dashboard.html?game=' + GAME_CONFIG.game_id
+      + (lang ? '&lang=' + encodeURIComponent(lang) : '');
   });
   dropdown.appendChild(dashRow);
 

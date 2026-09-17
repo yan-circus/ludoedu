@@ -12,6 +12,9 @@ window.editorService = {
   GAME_ID,
   GAME_NAME: 'CliConVocabulary',
 
+  // Autres langues vers lesquelles un niveau peut être copié (voir copyLevelToLang)
+  copyLevelTargets: VOCAB_LANGS.filter(l => l.game_id !== GAME_ID),
+
   // Aliases auth
   getProvider:    () => _currentUser?.providerData[0]?.providerId || null,
   reauthPassword: (pw) => _currentUser.reauthenticateWithCredential(
@@ -94,6 +97,90 @@ window.editorService = {
     words.docs.forEach(w => batch.delete(w.ref));
     batch.delete(ref);
     await batch.commit();
+  },
+
+  // Copie un niveau vers un autre game_id (langue) : conserve image, marqueurs/tracés et le
+  // français (langue pivot) ; vide le mot de langue cible (stocké sous la clé `en`, quelle que
+  // soit la langue réelle) et l'audio, qui doivent être ressaisis dans la langue cible.
+  copyLevelToLang: async (levelDocId, familyName, targetGameId) => {
+    const srcDoc = await db.collection('levels').doc(String(levelDocId)).get();
+    if (!srcDoc.exists) throw new Error('Niveau introuvable');
+    const lvl = srcDoc.data();
+
+    // Famille cible : réutilise une famille de même nom (insensible à la casse), sinon la crée
+    const famSnap = await db.collection('level_families')
+      .where('game_id', '==', targetGameId).get();
+    let targetFam = famSnap.docs
+      .map(d => ({ docId: d.id, ...d.data() }))
+      .find(f => (f.name || '').trim().toLowerCase() === (familyName || '').trim().toLowerCase());
+    if (!targetFam) {
+      const newFamId = await _editorNextFamilyId();
+      const famData = {
+        id:      newFamId,
+        uuid:    `cv-fam-${newFamId}-${Date.now()}`,
+        game_id: targetGameId,
+        name:    familyName,
+        notes:   '',
+        date:    new Date().toISOString(),
+        author:  _currentUser?.email || 'system',
+      };
+      await db.collection('level_families').doc(String(newFamId)).set(famData);
+      targetFam = { docId: String(newFamId), ...famData };
+    }
+
+    // Niveau cible : copie des champs indépendants de la langue, id/uuid neufs
+    const newLevelId = await _editorNextLevelId();
+    const newLevelData = {
+      id:                  newLevelId,
+      uuid:                `cv-lvl-${newLevelId}-${Date.now()}`,
+      game_id:             targetGameId,
+      family_id:           Number(targetFam.id),
+      family_uuid:         targetFam.uuid,
+      name:                lvl.name,
+      title:               lvl.title,
+      difficulties:        lvl.difficulties || [],
+      notes:               lvl.notes || '',
+      source:              lvl.source || 'standard',
+      owner_uid:           lvl.owner_uid || null,
+      private:             !!lvl.private,
+      image_path:          lvl.image_path || '',
+      marker_size:         lvl.marker_size,
+      arrow_size:          lvl.arrow_size,
+      marker_opacity:      lvl.marker_opacity,
+      selected_fill:       lvl.selected_fill,
+      selected_stroke:     lvl.selected_stroke,
+      sel_color_override:  lvl.sel_color_override,
+      marker_color:        lvl.marker_color,
+      marker_stroke_color: lvl.marker_stroke_color,
+      marker_stroke_width: lvl.marker_stroke_width,
+      line_style:          lvl.line_style,
+      arrow_head:          lvl.arrow_head,
+      valid:               false,
+      date:                new Date().toISOString(),
+      author:              _currentUser?.email || 'system',
+    };
+    await db.collection('levels').doc(String(newLevelId)).set(newLevelData);
+
+    // Mots : conserve position/tracé + français, vide le mot cible et l'audio
+    const wordsSnap = await srcDoc.ref.collection('words').orderBy('order').get();
+    if (!wordsSnap.empty) {
+      const batch     = db.batch();
+      const newColRef = db.collection('levels').doc(String(newLevelId)).collection('words');
+      wordsSnap.docs.forEach(w => {
+        const data = w.data();
+        batch.set(newColRef.doc(), {
+          langs:      { fr: data.langs?.fr || '' },
+          point:      data.point  || null,
+          arrows:     data.arrows || [],
+          order:      data.order,
+          audio_path: '',
+          audio_name: '',
+        });
+      });
+      await batch.commit();
+    }
+
+    return { docId: String(newLevelId), ...newLevelData };
   },
 
   // ── Words ─────────────────────────────────────────────────────────────────

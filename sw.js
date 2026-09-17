@@ -15,7 +15,7 @@
 // Seules les requêtes GET sont interceptées : Cache.put() lève une exception sur
 // une requête non-GET, ce qui casserait les uploads (PUT/POST) vers Storage.
 
-const RUNTIME_CACHE = 'ludoedu-runtime-v2';
+const RUNTIME_CACHE = 'ludoedu-runtime-v3';
 const STORAGE_HOST  = 'firebasestorage.googleapis.com';
 const CDN_HOST       = 'www.gstatic.com';
 
@@ -45,7 +45,10 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   const cache = await caches.open(RUNTIME_CACHE);
   try {
-    const response = await fetch(request);
+    // cache:'no-store' — sinon fetch() peut être servi par le cache HTTP du navigateur
+    // (silencieusement, même après F5/Ctrl+R, qui ne revalide pas les requêtes faites
+    // depuis le SW) et on recopierait une version obsolète dans le Cache Storage.
+    const response = await fetch(request, { cache: 'no-store' });
     // response.ok est toujours false pour une réponse opaque (cross-origin no-cors,
     // ex: gstatic.com/firebasestorage.googleapis.com) même en cas de succès réel.
     if (response.ok || response.type === 'opaque') cache.put(request, response.clone());

@@ -41,6 +41,7 @@
   <div class="level-meta-card">
     <div class="level-meta-card-header">
       <h2 id="meta-title"></h2>
+      <span id="meta-version" style="font-size:11px;color:#888"></span>
     </div>
     <div class="level-meta-card-body">
       <div class="form-group">
@@ -62,6 +63,13 @@
       <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
         <input id="meta-valid" type="checkbox" style="width:18px;height:18px;cursor:pointer">
         <label for="meta-valid" style="margin:0;cursor:pointer">Niveau valide (visible dans index.html)</label>
+      </div>
+      <div class="form-group" id="meta-copy-group" style="display:none">
+        <label>Copier vers une autre langue <small style="font-weight:normal;color:#888">(sans les mots ni l'audio de la langue cible)</small></label>
+        <div style="display:flex;gap:8px">
+          <select id="meta-copy-lang" style="flex:1"></select>
+          <button id="meta-copy-btn" type="button" class="btn btn-secondary">Copier</button>
+        </div>
       </div>
       <div id="meta-error" class="error-msg"></div>
       <button id="meta-edit-btn" class="btn btn-primary btn-full" style="margin-top:8px">

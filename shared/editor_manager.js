@@ -1,6 +1,9 @@
 // shared/editor_manager.js — browser commun pour les éditeurs de jeux LudoEdu
 // Chargé dynamiquement après les scripts du jeu. Utilise window.editorService.
 
+const VERSION = 'v0.1.0';
+console.log('%cEditor manager ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
+
 const _GAME = new URLSearchParams(location.search).get('game') || '';
 
 const _state = {
@@ -249,6 +252,7 @@ function _openMeta(lvl) {
 
   document.getElementById('meta-title').textContent =
     (_state.selectedFamily?.name || '') + ' / ' + (lvl.title || lvl.name);
+  document.getElementById('meta-version').textContent = VERSION;
   document.getElementById('meta-name').value  = lvl.title || lvl.name || '';
   document.getElementById('meta-notes').value = lvl.notes || '';
   showErr('meta-error', '');
@@ -265,7 +269,41 @@ function _openMeta(lvl) {
   _populateDiffSelect('meta-diff', lvl.difficulties || []);
   document.getElementById('meta-valid').checked = !!lvl.valid;
 
+  const copyGroup = document.getElementById('meta-copy-group');
+  if (editorService.copyLevelTargets?.length) {
+    copyGroup.style.display = '';
+    const sel = document.getElementById('meta-copy-lang');
+    sel.innerHTML = '';
+    editorService.copyLevelTargets.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.game_id;
+      opt.textContent = (l.flag ? l.flag + ' ' : '') + l.label;
+      sel.appendChild(opt);
+    });
+  } else {
+    copyGroup.style.display = 'none';
+  }
+
   document.getElementById('level-meta-panel').style.display = 'flex';
+}
+
+async function _handleCopyLevel() {
+  const btn          = document.getElementById('meta-copy-btn');
+  const targetGameId = Number(document.getElementById('meta-copy-lang').value);
+  const target        = editorService.copyLevelTargets.find(l => l.game_id === targetGameId);
+  const levelLabel    = _state.level.title || _state.level.name;
+  if (!confirm(`Copier le niveau "${levelLabel}" vers ${target?.label || targetGameId} ?\n(mots et audio de la langue cible non copiés — à ressaisir)`)) return;
+
+  setLoading(btn, true);
+  showErr('meta-error', '');
+  try {
+    await editorService.copyLevelToLang(_state.level.docId, _state.selectedFamily.name, targetGameId);
+    alert(`Niveau copié vers ${target?.label || targetGameId}.`);
+  } catch (err) {
+    showErr('meta-error', err.message);
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 async function _handleSaveMeta() {
@@ -335,3 +373,4 @@ document.getElementById('cancel-modal-btn').addEventListener('click', () => hide
 document.getElementById('meta-cancel-btn').addEventListener('click', _closeMetaPanel);
 document.getElementById('meta-save-btn').addEventListener('click', _handleSaveMeta);
 document.getElementById('meta-edit-btn').addEventListener('click', _openEditor);
+document.getElementById('meta-copy-btn').addEventListener('click', _handleCopyLevel);

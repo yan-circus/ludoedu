@@ -3,7 +3,8 @@
 // Adapté de shared/editor_manager.js : plus de page/auth propre, rendu dans le container fourni.
 // Utilise window.editorService (chargé par ensureEditorService, voir dashboard.js).
 
-console.log('%c[levels-manager] chargé — standard/perso/tiers (2026-07-28)', 'color:#6c5ce7');
+const LM_VERSION = 'v0.1.0';
+console.log('%c[levels-manager] ' + LM_VERSION + ' — standard/perso/tiers', 'color:#6c5ce7');
 
 let _lmGame = null;
 const _lmState = {
@@ -99,6 +100,7 @@ function _lmBuildLayout(container) {
       <div class="level-meta-card">
         <div class="level-meta-card-header">
           <h2 id="lm-meta-title"></h2>
+          <span id="lm-meta-version" style="font-size:11px;color:#888"></span>
         </div>
         <div class="level-meta-card-body">
           <div class="form-group">
@@ -124,6 +126,13 @@ function _lmBuildLayout(container) {
           <div id="lm-meta-private-group" class="form-group" style="flex-direction:row;align-items:center;gap:10px;display:none">
             <input id="lm-meta-private" type="checkbox" style="width:18px;height:18px;cursor:pointer">
             <label for="lm-meta-private" style="margin:0;cursor:pointer">Niveau privé (décoché = visible et rejoignable par les autres comptes, section "Niveaux tiers")</label>
+          </div>
+          <div class="form-group" id="lm-meta-copy-group" style="display:none">
+            <label>Copier vers une autre langue <small style="font-weight:normal;color:#888">(sans les mots ni l'audio de la langue cible)</small></label>
+            <div style="display:flex;gap:8px">
+              <select id="lm-meta-copy-lang" style="flex:1"></select>
+              <button id="lm-meta-copy-btn" type="button" class="btn btn-secondary">Copier</button>
+            </div>
           </div>
           <div id="lm-meta-error" class="error-msg"></div>
           <button id="lm-meta-edit-btn" class="btn btn-primary btn-full" style="margin-top:8px">
@@ -191,6 +200,7 @@ function _lmWireEvents(container) {
   container.querySelector('#lm-meta-cancel-btn').addEventListener('click', () => _lmCloseMetaPanel(container));
   container.querySelector('#lm-meta-save-btn').addEventListener('click', () => _lmHandleSaveMeta(container));
   container.querySelector('#lm-meta-edit-btn').addEventListener('click', () => _lmOpenEditor());
+  container.querySelector('#lm-meta-copy-btn').addEventListener('click', () => _lmHandleCopyLevel(container));
 
   container.querySelector('#lm-tiers-catalog-close-btn').addEventListener('click', () => _lmHideModal(container, 'lm-tiers-catalog-modal'));
 }
@@ -538,6 +548,7 @@ function _lmOpenMeta(container, lvl) {
 
   container.querySelector('#lm-meta-title').textContent =
     (_lmState.selectedFamily?.name || '') + ' / ' + (lvl.title || lvl.name);
+  container.querySelector('#lm-meta-version').textContent = LM_VERSION;
   container.querySelector('#lm-meta-name').value  = lvl.title || lvl.name || '';
   container.querySelector('#lm-meta-notes').value = lvl.notes || '';
   _lmShowErr(container, 'lm-meta-error', '');
@@ -561,7 +572,41 @@ function _lmOpenMeta(container, lvl) {
   container.querySelector('#lm-meta-private-group').style.display = showPrivate ? 'flex' : 'none';
   container.querySelector('#lm-meta-private').checked = lvl.private !== false; // fail-closed par défaut
 
+  const copyGroup = container.querySelector('#lm-meta-copy-group');
+  if (editorService.copyLevelTargets?.length) {
+    copyGroup.style.display = '';
+    const sel = container.querySelector('#lm-meta-copy-lang');
+    sel.innerHTML = '';
+    editorService.copyLevelTargets.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.game_id;
+      opt.textContent = (l.flag ? l.flag + ' ' : '') + l.label;
+      sel.appendChild(opt);
+    });
+  } else {
+    copyGroup.style.display = 'none';
+  }
+
   _lmShowModal(container, 'lm-level-meta-panel');
+}
+
+async function _lmHandleCopyLevel(container) {
+  const btn          = container.querySelector('#lm-meta-copy-btn');
+  const targetGameId = Number(container.querySelector('#lm-meta-copy-lang').value);
+  const target        = editorService.copyLevelTargets.find(l => l.game_id === targetGameId);
+  const levelLabel    = _lmState.level.title || _lmState.level.name;
+  if (!confirm(`Copier le niveau "${levelLabel}" vers ${target?.label || targetGameId} ?\n(mots et audio de la langue cible non copiés — à ressaisir)`)) return;
+
+  _lmSetLoading(btn, true);
+  _lmShowErr(container, 'lm-meta-error', '');
+  try {
+    await editorService.copyLevelToLang(_lmState.level.docId, _lmState.selectedFamily.name, targetGameId);
+    alert(`Niveau copié vers ${target?.label || targetGameId}.`);
+  } catch (err) {
+    _lmShowErr(container, 'lm-meta-error', err.message);
+  } finally {
+    _lmSetLoading(btn, false);
+  }
 }
 
 async function _lmHandleSaveMeta(container) {

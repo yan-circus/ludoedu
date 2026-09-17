@@ -2,7 +2,7 @@
 // Requires: firebase-core.js, platform-methods.js loaded before.
 // Contenu de chaque onglet chargé dynamiquement depuis shared/dashboard/<module>.js
 
-const VERSION = 'v0.6.11';
+const VERSION = 'v0.6.13';
 console.log('%cDashboard ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _game = new URLSearchParams(location.search).get('game');
@@ -33,7 +33,9 @@ function loadScript(src) {
 }
 
 function _homeHref() {
-  return _game ? '../' + _game + '/index.html' : '../index.html';
+  if (!_game) return '../index.html';
+  const lang = new URLSearchParams(location.search).get('lang');
+  return '../' + _game + '/index.html' + (lang ? '?lang=' + encodeURIComponent(lang) : '');
 }
 
 // Charge une fois editor-platform-methods.js + ../<game>/editor-firebase-service.js pour
