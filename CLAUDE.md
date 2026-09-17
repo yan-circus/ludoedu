@@ -133,16 +133,35 @@ game_types/{id}                    → types de jeu (game_id, id, slug, name, ic
 
 ### Registre des GAME_ID
 
-| GAME_ID | Slug              | Jeu              |
-|---------|-------------------|------------------|
-| 2       | cliconvocabulary  | CliConVocabulary |
-| 3       | calcnplay         | CalcNPlay        |
+| GAME_ID | Slug              | Jeu                          |
+|---------|-------------------|-------------------------------|
+| 2       | cliconvocabulary  | CliConVocabulary — Anglais   |
+| 3       | calcnplay         | CalcNPlay                    |
+| 4       | cliconvocabulary  | CliConVocabulary — Allemand  |
+
+CliConVocabulary est multilangue : un `game_id` par langue, résolu via `?lang=` dans
+`cliconvocabulary/langs.js` (`VOCAB_LANGS`). Voir la section CliConVocabulary ci-dessous.
 
 ---
 
 ## CliConVocabulary (dossier cliconvocabulary/)
 
-**game_id : `2` — slug : `'cliconvocabulary'`** — jeu complet et fonctionnel.
+**game_id : `2` (anglais), `4` (allemand) — slug : `'cliconvocabulary'`** — jeu complet et
+fonctionnel, multilangue.
+
+### langs.js
+Doit être chargé en premier (avant `game-config.js`/`firebase-service.js`/
+`editor-firebase-service.js`), y compris dans les séquences dynamiques
+(`shared/editor_manager.html`, `shared/dashboard.js` — chargement silencieusement ignoré
+si absent, pour ne pas casser les autres jeux).
+```js
+VOCAB_LANGS = [ {game_id:2, code:'en', label:'Anglais'}, {game_id:4, code:'de', label:'Allemand'} ]
+VOCAB_LANG  = VOCAB_LANGS.find(l => l.code === (?lang= dans l'URL, défaut 'en'))
+```
+`GAME_ID` dans `firebase-service.js`/`editor-firebase-service.js` vaut `VOCAB_LANG.game_id`
+(plus une constante en dur). **Pour ajouter une langue** : ajouter une entrée à
+`VOCAB_LANGS` (avec un `game_id` libre), créer les niveaux via `editor.html?lang=<code>`,
+ajouter le lien sur la page d'accueil racine (`/index.html`).
 
 ### game-config.js
 ```js

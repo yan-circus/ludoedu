@@ -4,7 +4,8 @@
 // avec ?lang=<code>.
 
 const VOCAB_LANGS = [
-  { game_id: 2, code: 'en', label: 'Anglais', flag: '🇬🇧' },
+  { game_id: 2, code: 'en', label: 'Anglais',  flag: '🇬🇧' },
+  { game_id: 4, code: 'de', label: 'Allemand', flag: '🇩🇪' },
 ];
 
 const VOCAB_LANG = VOCAB_LANGS.find(
